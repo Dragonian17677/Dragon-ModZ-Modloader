@@ -1,0 +1,125 @@
+name: Build a mod
+run-name: Build ${{ inputs.item_name }} for Minecraft ${{ inputs.mc_version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      mc_version:
+        description: Minecraft version
+        required: true
+        type: choice
+        default: '1.21.1'
+        options:
+          - '26.3'
+          - '26.2'
+          - '26.1.2'
+          - '26.1.1'
+          - '26.1'
+          - '1.21.11'
+          - '1.21.10'
+          - '1.21.9'
+          - '1.21.8'
+          - '1.21.7'
+          - '1.21.6'
+          - '1.21.5'
+          - '1.21.4'
+          - '1.21.3'
+          - '1.21.2'
+          - '1.21.1'
+          - '1.21'
+          - '1.20.6'
+          - '1.20.5'
+          - '1.20.4'
+          - '1.20.3'
+          - '1.20.2'
+          - '1.20.1'
+          - '1.20'
+          - '1.19.4'
+          - '1.19.3'
+          - '1.19.2'
+          - '1.19.1'
+          - '1.19'
+          - '1.18.2'
+          - '1.18.1'
+          - '1.18'
+          - '1.17.1'
+          - '1.17'
+          - '1.16.5'
+          - '1.16.4'
+          - '1.16.3'
+          - '1.16.2'
+          - '1.16.1'
+          - '1.16'
+          - '1.15.2'
+          - '1.15.1'
+          - '1.15'
+          - '1.14.4'
+      mod_name:
+        description: Mod name
+        required: true
+        default: 'Dragon Fang'
+      mod_id:
+        description: Mod id (lowercase letters, digits, underscores)
+        required: true
+        default: 'dragonfang'
+      item_name:
+        description: Item name shown in game
+        required: true
+        default: 'Dragon Fang'
+      item_id:
+        description: Item id (lowercase letters, digits, underscores)
+        required: true
+        default: 'dragon_fang'
+      ingredients:
+        description: Crafting ingredients, comma separated (up to 9)
+        required: true
+        default: 'blaze_rod, diamond, diamond'
+      count:
+        description: How many items one craft makes
+        required: true
+        default: '1'
+      accent:
+        description: Texture accent colour (hex)
+        required: true
+        default: '#39ff14'
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: checkout generator
+        uses: actions/checkout@v6
+      - name: get the official Fabric template for this Minecraft version
+        env:
+          MC: ${{ inputs.mc_version }}
+        run: git clone --depth 1 --branch "$MC" https://github.com/FabricMC/fabric-example-mod project
+      - name: generate the mod
+        env:
+          MC: ${{ inputs.mc_version }}
+          MOD_NAME: ${{ inputs.mod_name }}
+          MOD_ID: ${{ inputs.mod_id }}
+          ITEM_NAME: ${{ inputs.item_name }}
+          ITEM_ID: ${{ inputs.item_id }}
+          INGREDIENTS: ${{ inputs.ingredients }}
+          COUNT: ${{ inputs.count }}
+          ACCENT: ${{ inputs.accent }}
+        run: |
+          python3 tools/generate.py --template project --mc "$MC" --mod-name "$MOD_NAME" --mod-id "$MOD_ID" \
+            --item-name "$ITEM_NAME" --item-id "$ITEM_ID" --ingredients "$INGREDIENTS" --count "$COUNT" --accent "$ACCENT"
+      - name: setup jdk
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'microsoft'
+      - name: build
+        working-directory: project
+        run: |
+          chmod +x ./gradlew
+          ./gradlew build
+      - name: upload the mod jar
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.mod_id }}-${{ inputs.mc_version }}
+          path: |
+            project/build/libs/*.jar
+            !project/build/libs/*-sources.jar
